@@ -189,6 +189,7 @@ def resolve_current_platform_cls_qualname() -> str:
             assert callable(func)
             platform_cls_qualname = func()
             if platform_cls_qualname is not None:
+                logger.info(f"Platform plugin {name} activated with {platform_cls_qualname}")
                 activated_plugins.append(name)
         except Exception:
             pass

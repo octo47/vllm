@@ -1,6 +1,7 @@
 """Unified block allocator for MLX platform with unified memory architecture."""
 
 import time
+import logging
 from typing import Dict, FrozenSet, List, Optional, Tuple
 
 from vllm.core.block.interfaces import Block, DeviceAwareBlockAllocator
@@ -8,6 +9,7 @@ from vllm.core.block.naive_block import NaiveBlock, NaiveBlockAllocator
 from vllm.core.block.prefix_caching_block import PrefixCachingBlockAllocator
 from vllm.utils import Device
 
+logger = logging.getLogger(__name__)
 
 class UnifiedBlockAllocator(DeviceAwareBlockAllocator):
     """
@@ -47,7 +49,7 @@ class UnifiedBlockAllocator(DeviceAwareBlockAllocator):
         """
         # In unified memory, we only use the GPU block count since all memory
         # is accessible by both CPU and GPU components
-        total_blocks = num_gpu_blocks
+        total_blocks = num_gpu_blocks + num_cpu_blocks
         
         # Create block IDs for the unified pool
         block_ids = list(range(total_blocks))
@@ -69,6 +71,8 @@ class UnifiedBlockAllocator(DeviceAwareBlockAllocator):
         else:
             raise ValueError(f"Unknown allocator type: {allocator_type}")
         
+        logger.info(f"Allocating {__name__}: allocator_type={allocator_type} total_blocks={total_blocks} block_size={block_size}")
+
         return UnifiedBlockAllocator(
             block_allocator=allocator,
             num_total_blocks=total_blocks,

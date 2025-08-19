@@ -618,8 +618,15 @@ def max_memory_usage_bytes(vllm_config: VllmConfig,
     """
     Get the maximum memory usage in bytes for the given KV cache specs.
     """
-    return sum(
-        spec.max_memory_usage_bytes(vllm_config) for spec in kv_cache_specs)
+
+    max_memory = 0
+    for spec in kv_cache_specs:
+        layer_bytes = spec.max_memory_usage_bytes(vllm_config)
+        max_memory += layer_bytes
+
+    logger.info(f"Calculated total memory usage {max_memory}")
+
+    return max_memory
 
 
 def estimate_max_model_len(vllm_config: VllmConfig,
@@ -693,6 +700,9 @@ def check_enough_kv_cache_memory(vllm_config: VllmConfig,
                          "initializing the engine.")
 
     max_model_len = vllm_config.model_config.max_model_len
+
+    logger.info(f"max_model_len={max_model_len}")
+
     needed_memory = max_memory_usage_bytes(vllm_config, kv_cache_spec.values())
 
     if needed_memory > available_memory:
@@ -772,11 +782,19 @@ def get_max_concurrency_for_kv_cache_config(
     """
     num_layer_per_group = max(
         len(group.layer_names) for group in kv_cache_config.kv_cache_groups)
-    max_memory_usage_per_request = num_layer_per_group * max_memory_usage_bytes(
+    total_max_memory_usage_bytes = max_memory_usage_bytes(
         vllm_config,
         (group.kv_cache_spec for group in kv_cache_config.kv_cache_groups))
+    max_memory_usage_per_request = num_layer_per_group * total_max_memory_usage_bytes
     memory_per_block = kv_cache_config.kv_cache_groups[
         0].kv_cache_spec.page_size_bytes * num_layer_per_group
+    
+    logger.info(f"About to compute max_concurrecy: "
+                f"total_max_memory_usage_bytes={total_max_memory_usage_bytes} "
+                f"max_memory_usage_per_reques={max_memory_usage_per_request} "
+                f"num_layer_per_group={num_layer_per_group} "
+                f"memory_per_block={memory_per_block} ")
+
     num_block_per_request = cdiv(max_memory_usage_per_request,
                                  memory_per_block)
     max_concurrency = kv_cache_config.num_blocks / num_block_per_request
@@ -1107,6 +1125,9 @@ def get_kv_cache_config(
     Returns:
         The generated KVCacheConfigs
     """
+
+    logger.info(f"Calculating kvcache for available memory: {available_memory}")
+
     check_enough_kv_cache_memory(vllm_config, kv_cache_spec, available_memory)
     if vllm_config.scheduler_config.disable_hybrid_kv_cache_manager:
         unify_hybrid_kv_cache_specs(kv_cache_spec)

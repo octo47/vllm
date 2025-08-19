@@ -73,7 +73,7 @@ class EngineCore:
         load_general_plugins()
 
         self.vllm_config = vllm_config
-        logger.info("Initializing a V1 LLM engine (v%s) with config: %s",
+        logger.info("Initializing a V1 LLM (hacked) engine (v%s) with config: %s",
                     VLLM_VERSION, vllm_config)
 
         self.log_stats = log_stats
@@ -472,6 +472,8 @@ class EngineCoreProc(EngineCore):
         client_handshake_address: Optional[str] = None,
         engine_index: int = 0,
     ):
+        logger.info(f"{__name__} initializing")
+
         self.input_queue = queue.Queue[tuple[EngineCoreRequestType, Any]]()
         self.output_queue = queue.Queue[Union[tuple[int, EngineCoreOutputs],
                                               bytes]]()
