@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 """A block manager that manages token blocks."""
+import importlib
 from typing import Dict, List, Optional
 from typing import Sequence as GenericSequence
 from typing import Tuple
@@ -12,6 +13,7 @@ from vllm.core.block.prefix_caching_block import (ComputedBlocksTracker,
                                                   LastAccessBlocksTracker)
 from vllm.core.block.utils import check_no_caching_or_swa_for_blockmgr_encdec
 from vllm.core.interfaces import AllocStatus, BlockSpaceManager
+from vllm.platforms import current_platform
 from vllm.sequence import Sequence, SequenceGroup, SequenceStatus
 from vllm.utils import Device
 
@@ -92,7 +94,13 @@ class SelfAttnBlockSpaceManager(BlockSpaceManager):
 
         self.watermark_blocks = int(watermark * num_gpu_blocks)
 
-        self.block_allocator = CpuGpuBlockAllocator.create(
+        # Dynamically load the block allocator class based on the current platform
+        allocator_class_name = current_platform.get_block_allocator_cls()
+        module_name, class_name = allocator_class_name.rsplit('.', 1)
+        module = importlib.import_module(module_name)
+        allocator_class = getattr(module, class_name)
+        
+        self.block_allocator = allocator_class.create(
             allocator_type="prefix_caching" if enable_caching else "naive",
             num_gpu_blocks=num_gpu_blocks,
             num_cpu_blocks=num_cpu_blocks,

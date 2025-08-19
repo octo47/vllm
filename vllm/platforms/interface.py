@@ -593,6 +593,20 @@ class Platform:
         """
         return False
 
+    @classmethod
+    def get_block_allocator_cls(cls) -> str:
+        """
+        Get the block allocator class for the current platform.
+        
+        Returns the fully qualified class name of the block allocator
+        to use for this platform. Platforms can override this method
+        to specify their own block allocator implementations.
+        
+        Returns:
+            str: Fully qualified class name of the block allocator
+        """
+        return "vllm.core.block.cpu_gpu_block_allocator.CpuGpuBlockAllocator"
+
 
 class UnspecifiedPlatform(Platform):
     _enum = PlatformEnum.UNSPECIFIED
